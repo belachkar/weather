@@ -181,7 +181,7 @@
     });
   };
 
-  // Get Local storage cards
+  // Get Local storage cards if browser doesn't support Service worker
   app.getLocalStorageForecasts = function () {
     let cardsStoredNbr = localStorage.length;
     if (cardsStoredNbr > 0) {
@@ -191,12 +191,26 @@
         app.updateForecastCard(JSON.parse(item));
       }
     } else {
-      // Inject facked card data
+      // Inject facked card data if unable to connect for the first time
       app.updateForecastCard(injectedForecast);
     }
   };
 
   app.getLocalStorageForecasts();
   app.updateForecasts();
+
+  // ServiceWorker is a progressive technology. Ignore unsupported browsers
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      console.log('CLIENT: service worker registration in progress.');
+      navigator.serviceWorker.register('/sw.js').then(function () {
+        console.log('CLIENT: service worker registration complete.');
+      }, function () {
+        console.log('CLIENT: service worker registration failure.');
+      });
+    });
+  } else {
+    console.log('CLIENT: service worker is not supported.');
+  }
 
 })();
