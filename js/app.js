@@ -2,9 +2,9 @@
 (function () {
   'use strict';
 
-  var weatherAPIUrlBase = 'https://publicdata-weather.firebaseio.com/';
+  let weatherAPIUrlBase = 'https://publicdata-weather.firebaseio.com/';
 
-  var app = {
+  let app = {
     isLoading: true,
     visibleCards: {},
     selectedCities: [],
@@ -15,6 +15,32 @@
     daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   };
 
+  let injectedForecast = {
+    key: 'newyork',
+    label: 'New York, NY',
+    currently: {
+      time: 1453489481,
+      summary: 'Clear',
+      icon: 'partly-cloudy-day',
+      temperature: 52.74,
+      apparentTemperature: 74.34,
+      precipProbability: 0.20,
+      humidity: 0.77,
+      windBearing: 125,
+      windSpeed: 1.52
+    },
+    daily: {
+      data: [
+        { icon: 'clear-day', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'rain', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'snow', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'sleet', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'fog', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'wind', temperatureMax: 55, temperatureMin: 34 },
+        { icon: 'partly-cloudy-day', temperatureMax: 55, temperatureMin: 34 }
+      ]
+    }
+  };
 
   /*****************************************************************************
    *
@@ -35,10 +61,10 @@
 
   /* Event listener for add city button in add city dialog */
   document.getElementById('butAddCity').addEventListener('click', function () {
-    var select = document.getElementById('selectCityToAdd');
-    var selected = select.options[select.selectedIndex];
-    var key = selected.value;
-    var label = selected.textContent;
+    let select = document.getElementById('selectCityToAdd');
+    let selected = select.options[select.selectedIndex];
+    let key = selected.value;
+    let label = selected.textContent;
     app.getForecast(key, label);
     app.selectedCities.push({ key: key, label: label });
     app.toggleAddDialog(false);
@@ -68,7 +94,7 @@
   // Updates a weather card with the latest weather forecast. If the card
   // doesn't already exist, it's cloned from the template.
   app.updateForecastCard = function (data) {
-    var card = app.visibleCards[data.key];
+    let card = app.visibleCards[data.key];
     if (!card) {
       card = app.cardTemplate.cloneNode(true);
       card.classList.remove('cardTemplate');
@@ -93,12 +119,12 @@
       Math.round(data.currently.windSpeed);
     card.querySelector('.current .wind .direction').textContent =
       data.currently.windBearing;
-    var nextDays = card.querySelectorAll('.future .oneday');
-    var today = new Date();
+    let nextDays = card.querySelectorAll('.future .oneday');
+    let today = new Date();
     today = today.getDay();
-    for (var i = 0; i < 7; i++) {
-      var nextDay = nextDays[i];
-      var daily = data.daily.data[i];
+    for (let i = 0; i < 7; i++) {
+      let nextDay = nextDays[i];
+      let daily = data.daily.data[i];
       if (daily && nextDay) {
         nextDay.querySelector('.date').textContent =
           app.daysOfWeek[(i + today) % 7];
@@ -114,6 +140,11 @@
       app.container.removeAttribute('hidden');
       app.isLoading = false;
     }
+
+    // Update local storage card
+    const { key, label, currently, daily } = data;
+    const item = { key, label, currently, daily };
+    localStorage.setItem(item.key, JSON.stringify(item));
   };
 
 
@@ -125,13 +156,13 @@
 
   // Gets a forecast for a specific city and update the card with the data
   app.getForecast = function (key, label) {
-    var url = weatherAPIUrlBase + key + '.json';
+    let url = weatherAPIUrlBase + key + '.json';
     // Make the XHR to get the data, then update the card
-    var request = new XMLHttpRequest();
+    let request = new XMLHttpRequest();
     request.onreadystatechange = function () {
       if (request.readyState === XMLHttpRequest.DONE) {
         if (request.status === 200) {
-          var response = JSON.parse(request.response);
+          let response = JSON.parse(request.response);
           response.key = key;
           response.label = label;
           app.updateForecastCard(response);
@@ -144,10 +175,28 @@
 
   // Iterate all of the cards and attempt to get the latest forecast data
   app.updateForecasts = function () {
-    var keys = Object.keys(app.visibleCards);
+    let keys = Object.keys(app.visibleCards);
     keys.forEach(function (key) {
       app.getForecast(key);
     });
   };
+
+  // Get Local storage cards
+  app.getLocalStorageForecasts = function () {
+    let cardsStoredNbr = localStorage.length;
+    if (cardsStoredNbr > 0) {
+      for (let i = 0; i < cardsStoredNbr; i++) {
+        const key = localStorage.key(i);
+        const item = localStorage.getItem(key);
+        app.updateForecastCard(JSON.parse(item));
+      }
+    } else {
+      // Inject facked card data
+      app.updateForecastCard(injectedForecast);
+    }
+  };
+
+  app.getLocalStorageForecasts();
+  app.updateForecasts();
 
 })();
