@@ -1,5 +1,5 @@
-var cacheName = 'weatherPWA-v1';
-var filesToCache = [
+let cacheName = 'weatherPWA-v1';
+let filesToCache = [
   '/',
   '/index.html',
   'favicon.ico',
@@ -32,8 +32,9 @@ self.addEventListener('install', function (e) {
 
 self.addEventListener('activate', function (e) {
   console.log('[ServiceWorker] Activate');
-  e.waitUntil(
+  e.waitUntil(    
     caches.keys().then(function (keyList) {
+      console.log('Caches.keys', caches.keys());
       return Promise.all(keyList.map(function (key) {
         if (key !== cacheName) {
           console.log('[ServiceWorker] Removing old cache', key);
