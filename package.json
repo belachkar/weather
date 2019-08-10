@@ -1,0 +1,26 @@
+{
+  "name": "pwa-weather",
+  "version": "0.0.1",
+  "description": "Weather PWA Progressive Web App.",
+  "main": "index.html",
+  "scripts": {
+    "build": "workbox generateSW workbox-config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/belachkar/weather.git"
+  },
+  "keywords": [
+    "PWA",
+    "Workbox"
+  ],
+  "author": "Belachkar Ali",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/belachkar/weather/issues"
+  },
+  "homepage": "https://github.com/belachkar/weather#readme",
+  "devDependencies": {
+    "workbox-cli": "^4.3.1"
+  }
+}

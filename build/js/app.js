@@ -2,20 +2,7 @@
 (function () {
   'use strict';
 
-  let weatherAPIUrlBase = 'https://publicdata-weather.firebaseio.com/';
-
-  let app = {
-    isLoading: true,
-    visibleCards: {},
-    selectedCities: [],
-    spinner: document.querySelector('.loader'),
-    cardTemplate: document.querySelector('.cardTemplate'),
-    container: document.querySelector('.main'),
-    addDialog: document.querySelector('.dialog-container'),
-    daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  };
-
-  let injectedForecast = {
+  var injectedForecast = {
     key: 'newyork',
     label: 'New York, NY',
     currently: {
@@ -42,6 +29,20 @@
     }
   };
 
+  var weatherAPIUrlBase = 'https://publicdata-weather.firebaseio.com/';
+
+  var app = {
+    isLoading: true,
+    visibleCards: {},
+    selectedCities: [],
+    spinner: document.querySelector('.loader'),
+    cardTemplate: document.querySelector('.cardTemplate'),
+    container: document.querySelector('.main'),
+    addDialog: document.querySelector('.dialog-container'),
+    daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  };
+
+
   /*****************************************************************************
    *
    * Event listeners for UI elements
@@ -61,12 +62,13 @@
 
   /* Event listener for add city button in add city dialog */
   document.getElementById('butAddCity').addEventListener('click', function () {
-    let select = document.getElementById('selectCityToAdd');
-    let selected = select.options[select.selectedIndex];
-    let key = selected.value;
-    let label = selected.textContent;
+    var select = document.getElementById('selectCityToAdd');
+    var selected = select.options[select.selectedIndex];
+    var key = selected.value;
+    var label = selected.textContent;
     app.getForecast(key, label);
     app.selectedCities.push({ key: key, label: label });
+    app.saveSelectedCities();
     app.toggleAddDialog(false);
   });
 
@@ -94,7 +96,7 @@
   // Updates a weather card with the latest weather forecast. If the card
   // doesn't already exist, it's cloned from the template.
   app.updateForecastCard = function (data) {
-    let card = app.visibleCards[data.key];
+    var card = app.visibleCards[data.key];
     if (!card) {
       card = app.cardTemplate.cloneNode(true);
       card.classList.remove('cardTemplate');
@@ -103,9 +105,16 @@
       app.container.appendChild(card);
       app.visibleCards[data.key] = card;
     }
+
+    // Verify data is newer than what we already have, if not, bail.
+    var dateElem = card.querySelector('.date');
+    if (dateElem.getAttribute('data-dt') >= data.currently.time) {
+      return;
+    }
+
+    dateElem.setAttribute('data-dt', data.currently.time);
+    dateElem.textContent = new Date(data.currently.time * 1000);
     card.querySelector('.description').textContent = data.currently.summary;
-    card.querySelector('.date').textContent =
-      new Date(data.currently.time * 1000);
     card.querySelector('.current .icon').classList.add(data.currently.icon);
     card.querySelector('.current .temperature .value').textContent =
       Math.round(data.currently.temperature);
@@ -119,12 +128,12 @@
       Math.round(data.currently.windSpeed);
     card.querySelector('.current .wind .direction').textContent =
       data.currently.windBearing;
-    let nextDays = card.querySelectorAll('.future .oneday');
-    let today = new Date();
+    var nextDays = card.querySelectorAll('.future .oneday');
+    var today = new Date();
     today = today.getDay();
-    for (let i = 0; i < 7; i++) {
-      let nextDay = nextDays[i];
-      let daily = data.daily.data[i];
+    for (var i = 0; i < 7; i++) {
+      var nextDay = nextDays[i];
+      var daily = data.daily.data[i];
       if (daily && nextDay) {
         nextDay.querySelector('.date').textContent =
           app.daysOfWeek[(i + today) % 7];
@@ -140,11 +149,6 @@
       app.container.removeAttribute('hidden');
       app.isLoading = false;
     }
-
-    // Update local storage card
-    const { key, label, currently, daily } = data;
-    const item = { key, label, currently, daily };
-    localStorage.setItem(item.key, JSON.stringify(item));
   };
 
 
@@ -156,13 +160,24 @@
 
   // Gets a forecast for a specific city and update the card with the data
   app.getForecast = function (key, label) {
-    let url = weatherAPIUrlBase + key + '.json';
+    var url = weatherAPIUrlBase + key + '.json';
+    if ('caches' in window) {
+      caches.match(url).then(function (response) {
+        if (response) {
+          response.json().then(function (json) {
+            json.key = key;
+            json.label = label;
+            app.updateForecastCard(json);
+          });
+        }
+      });
+    }
     // Make the XHR to get the data, then update the card
-    let request = new XMLHttpRequest();
+    var request = new XMLHttpRequest();
     request.onreadystatechange = function () {
       if (request.readyState === XMLHttpRequest.DONE) {
         if (request.status === 200) {
-          let response = JSON.parse(request.response);
+          var response = JSON.parse(request.response);
           response.key = key;
           response.label = label;
           app.updateForecastCard(response);
@@ -175,42 +190,39 @@
 
   // Iterate all of the cards and attempt to get the latest forecast data
   app.updateForecasts = function () {
-    let keys = Object.keys(app.visibleCards);
+    var keys = Object.keys(app.visibleCards);
     keys.forEach(function (key) {
       app.getForecast(key);
     });
   };
 
-  // Get Local storage cards if browser doesn't support Service worker
-  app.getLocalStorageForecasts = function () {
-    let cardsStoredNbr = localStorage.length;
-    if (cardsStoredNbr > 0) {
-      for (let i = 0; i < cardsStoredNbr; i++) {
-        const key = localStorage.key(i);
-        const item = localStorage.getItem(key);
-        app.updateForecastCard(JSON.parse(item));
-      }
-    } else {
-      // Inject facked card data if unable to connect for the first time
-      app.updateForecastCard(injectedForecast);
-    }
+  app.saveSelectedCities = function () {
+    window.localforage.setItem('selectedCities', app.selectedCities);
   };
 
-  app.getLocalStorageForecasts();
-  app.updateForecasts();
-
-  // ServiceWorker is a progressive technology. Ignore unsupported browsers
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      console.log('CLIENT: service worker registration in progress.');
-      navigator.serviceWorker.register('/sw.js').then(function () {
-        console.log('CLIENT: service worker registration complete.');
-      }, function () {
-        console.log('CLIENT: service worker registration failure.');
-      });
+  document.addEventListener('DOMContentLoaded', function () {
+    window.localforage.getItem('selectedCities', function (err, cityList) {
+      if (cityList) {
+        app.selectedCities = cityList;
+        app.selectedCities.forEach(function (city) {
+          app.getForecast(city.key, city.label);
+        });
+      } else {
+        app.updateForecastCard(injectedForecast);
+        app.selectedCities = [
+          { key: injectedForecast.key, label: injectedForecast.label }
+        ];
+        app.saveSelectedCities();
+      }
     });
-  } else {
-    console.log('CLIENT: service worker is not supported.');
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then(function () {
+        console.log('Service Worker Registered');
+      });
   }
 
 })();

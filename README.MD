@@ -8,3 +8,7 @@ Created using:
 * CSS
 * Javascript
 * Service worker
+
+Dependecies
+
+* Workbox
