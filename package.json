@@ -21,6 +21,6 @@
   },
   "homepage": "https://github.com/belachkar/weather#readme",
   "devDependencies": {
-    "workbox-cli": "^4.3.1"
+    "workbox-cli": "^6.5.4"
   }
 }
